@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1.7
+# Club App project toolchain image.
+ARG ARCHON_SERVER_IMAGE=arno/archon-server:0.9.0
+ARG PLAYWRIGHT_VERSION=1.59.1
+
+FROM ${ARCHON_SERVER_IMAGE}
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+RUN mkdir -p /ms-playwright \
+    && npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
+    && chown -R appuser:appuser /ms-playwright \
+    && chmod -R a+rX /ms-playwright \
+    && npm cache clean --force \
+    && node --version \
+    && npm --version
+
+# Expo, Supabase and Jest are installed from Club App's pinned package-lock via
+# npm ci inside each worktree; avoid mutable global CLI versions in this image.

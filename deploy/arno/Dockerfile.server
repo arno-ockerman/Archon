@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7
+# Arno's shared Archon control-plane image.
+# Keep project-specific browser/tooling in deploy/arno/workers/.
+ARG ARCHON_VERSION=0.9.0
+ARG NODE_VERSION=22.22.0
+
+FROM node:${NODE_VERSION}-bookworm-slim AS node-runtime
+FROM ghcr.io/coleam00/archon:${ARCHON_VERSION}
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Repo workflows currently execute in the Archon application container. Keep the
+# common toolchain here; project-specific images remain separate and reproducible.
+COPY --from=node-runtime /usr/local/ /usr/local/
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       python3 \
+       pkg-config \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version \
+    && npm --version
+
+# The upstream entrypoint starts as root, repairs bind-mount ownership, and then
+# drops to appuser (UID/GID 1001). Do not add a final USER directive here.

@@ -1,0 +1,35 @@
+services:
+  archon:
+    build:
+      context: ../..
+      dockerfile: deploy/arno/Dockerfile.server
+      args:
+        ARCHON_VERSION: ${ARCHON_VERSION:-0.9.0}
+    image: arno/archon-server:${ARCHON_VERSION:-0.9.0}
+    container_name: archon
+    restart: unless-stopped
+    user: "0:0"
+    env_file:
+      - ${ARCHON_ENV_FILE:-/mnt/HomeNAS/appdata/archon/data/.env}
+    environment:
+      ARCHON_DOCKER: "true"
+      PORT: "3000"
+      HOME: "/home/appuser"
+      GH_CONFIG_DIR: "/opt/ai-tools/config/gh"
+      GITHUB_CONFIG_DIR: "/opt/ai-tools/config/gh"
+      CODEX_BIN_PATH: "/opt/ai-tools/bin/codex"
+      PATH: "/opt/ai-tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ports:
+      - "${ARCHON_HOST_PORT:-30430}:3000"
+    volumes:
+      - ${ARCHON_DATA_PATH:-/mnt/HomeNAS/appdata/archon/data}:/.archon
+      - ${ARCHON_HOME_PATH:-/mnt/HomeNAS/appdata/archon/home}:/home/appuser
+      - ${AI_TOOLS_PATH:-/mnt/HomeNAS/appdata/ai-tools}:/opt/ai-tools
+      - ${PRODUCTIVITY_CENTER_PATH:-/mnt/HomeNAS/appdata/ai-context/ProductivityCenter}:/opt/ai-context/ProductivityCenter:ro
+      - ${PLAYWRIGHT_CACHE_PATH:-/mnt/HomeNAS/appdata/archon/playwright}:/ms-playwright
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${ARCHON_DEPLOY_ROOT:-/mnt/HomeNAS/appdata/archon/source}"
+COMPOSE="$ROOT/deploy/arno/docker-compose.truenas.yml"
+PROJECT="${ARCHON_COMPOSE_PROJECT:-archon}"
+
+compose() {
+  docker compose -p "$PROJECT" -f "$COMPOSE" "$@"
+}
+
+usage() {
+  cat <<'EOF'
+Usage: archonctl <status|health|logs|config|pull|build|up|rebuild|restart|preflight>
+
+Safe operations for Arno's Archon deployment. This script intentionally does
+not expose an arbitrary docker exec command.
+EOF
+}
+
+case "${1:-}" in
+  status) compose ps ;;
+  health) curl -fsS http://127.0.0.1:${ARCHON_HOST_PORT:-30430}/api/health ;;
+  logs) compose logs --tail="${ARCHON_LOG_LINES:-200}" archon ;;
+  config) compose config --quiet && echo "compose config OK" ;;
+  pull)
+    git -C "$ROOT" fetch upstream
+    git -C "$ROOT" status --short --branch
+    ;;
+  build) compose build archon ;;
+  up) compose up -d archon ;;
+  rebuild) compose build archon && compose up -d --force-recreate archon ;;
+  restart) compose restart archon ;;
+  preflight)
+    compose exec -T archon sh -lc '
+      set -eu
+      id
+      for cmd in git gh node npm bun java claude codex; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+          printf "%s=%s\n" "$cmd" "$(command -v "$cmd")"
+        else
+          printf "%s=MISSING\n" "$cmd"
+        fi
+      done
+      gh auth status
+      codex login status
+    '
+    ;;
+  *) usage; exit 2 ;;
+esac

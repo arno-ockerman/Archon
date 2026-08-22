@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1.7
+# Make It Happen project toolchain image.
+ARG ARCHON_SERVER_IMAGE=arno/archon-server:0.9.0
+ARG PLAYWRIGHT_VERSION=1.56.0
+
+FROM eclipse-temurin:21-jre-jammy AS java-runtime
+FROM ${ARCHON_SERVER_IMAGE}
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive \
+    JAVA_HOME=/opt/java/openjdk \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=java-runtime /opt/java/openjdk /opt/java/openjdk
+RUN mkdir -p /ms-playwright \
+    && npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
+    && chown -R appuser:appuser /ms-playwright \
+    && chmod -R a+rX /ms-playwright \
+    && npm cache clean --force \
+    && java -version \
+    && node --version \
+    && npm --version
+
+# Preserve Archon's root -> ownership repair -> appuser entrypoint flow.
