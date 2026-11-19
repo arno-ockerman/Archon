@@ -22,5 +22,19 @@ RUN apt-get update \
     && node --version \
     && npm --version
 
+# playwright-cli for the sdlc pack's UI review lenses (review ux/code, build-queue
+# route). It drives the Chromium the upstream image already ships for agent-browser,
+# so no Playwright browser download is needed (and /ms-playwright is a bind mount at
+# runtime, which would hide a browser installed there at build time).
+# Remove this block to roll back; the lenses then report "not exercised".
+ARG PLAYWRIGHT_CLI_VERSION=0.1.23
+ENV PLAYWRIGHT_MCP_EXECUTABLE_PATH=/usr/bin/chromium \
+    PLAYWRIGHT_MCP_SANDBOX=false
+RUN test -x /usr/bin/chromium \
+    && npm install -g "@playwright/cli@${PLAYWRIGHT_CLI_VERSION}" \
+    && npm cache clean --force \
+    && playwright-cli --version \
+    && test -f /usr/local/lib/node_modules/@playwright/cli/skills/playwright-cli/SKILL.md
+
 # The upstream entrypoint starts as root, repairs bind-mount ownership, and then
 # drops to appuser (UID/GID 1001). Do not add a final USER directive here.
