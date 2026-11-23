@@ -22,6 +22,29 @@ RUN apt-get update \
     && node --version \
     && npm --version
 
+# TEMPORARY stopgap for software-factory#43 (a refused PR description cost an unpushed
+# round of code). Overwrites the sdlc pack's publish-pr node so it pushes BEFORE it
+# checks pr-description.md and escapes stray reserved markers instead of refusing.
+# The upstream image is a source build that reads the bundled pack from /app/.archon
+# at runtime, so replacing these two files is the whole change. The sha256 guard fails
+# the BUILD if the base image's files are not the exact v0.14.0 bytes this was ported
+# from. When it trips: if the new upstream release has the fix, delete this block and
+# deploy/arno/patches/sdlc-publish-pr-v0.14.0/; otherwise re-port the patch.
+COPY deploy/arno/patches/sdlc-publish-pr-v0.14.0/ /tmp/sdlc-publish-pr/
+RUN set -eu; \
+    pr=/app/.archon/workflows/sdlc/pr; \
+    if ! printf '%s\n' \
+         "9711a7c99c4dedd7d77f61af75cd85d37950c93050fe4a2896e602846c20305e  $pr/scripts/publish-pr.ts" \
+         "f321d4495e64088f2eff83d5c04a4684d6d28db31fc59ef7b52446facf85b0e6  $pr/commands/pr.md" \
+         | sha256sum -c -; then \
+      echo "ERROR: base image sdlc/pr files are not Archon v0.14.0's; see the comment above this block" >&2; \
+      exit 1; \
+    fi; \
+    cat /tmp/sdlc-publish-pr/publish-pr.ts > "$pr/scripts/publish-pr.ts"; \
+    cat /tmp/sdlc-publish-pr/pr.md > "$pr/commands/pr.md"; \
+    rm -rf /tmp/sdlc-publish-pr; \
+    grep -q "function declaredSection" "$pr/scripts/publish-pr.ts"
+
 # playwright-cli for the sdlc pack's UI review lenses (review ux/code, build-queue
 # route). It drives the Chromium the upstream image already ships for agent-browser,
 # so no Playwright browser download is needed (and /ms-playwright is a bind mount at

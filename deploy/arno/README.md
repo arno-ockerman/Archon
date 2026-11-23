@@ -84,3 +84,31 @@ npm run export:web
 
 Deploys, Supabase migrations, Firebase changes, auth, billing and production
 data mutations remain approval-gated.
+
+## Temporary pack patches
+
+`deploy/arno/patches/` holds byte-for-byte replacements for files in the upstream
+image's bundled workflow packs (`/app/.archon/workflows/`). Each one is applied by a
+guarded block in `Dockerfile.server` that refuses to build unless the base image's
+original file has the exact checksum the patch was ported from.
+
+- `sdlc-publish-pr-v0.14.0/` (software-factory#43): `publish-pr` pushes the branch and
+  opens/continues the pull request before it checks `pr-description.md`, escapes
+  reserved description markers written outside Markdown code, and fails only after the
+  push when the description still cannot be written. Upstream fix: coleam00/Archon PR
+  (see the commit message). Remove the block and the directory once `ARCHON_VERSION`
+  points at a release that contains it.
+
+Verify a running container carries it (prints the patched function's line):
+
+```bash
+docker compose -p archon -f deploy/arno/docker-compose.truenas.yml \
+  exec -T archon grep -n "function declaredSection" \
+  /app/.archon/workflows/sdlc/pr/scripts/publish-pr.ts
+```
+
+Each new run freezes its own copy of the pack, so also check the first factory run
+after the rebuild: `workflow-source/runs/<runId>/bundled/workflows/sdlc/pr/scripts/publish-pr.ts`
+under that run's workspace must contain `declaredSection`. Runs started before the
+rebuild keep the old copy.
+
