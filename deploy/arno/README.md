@@ -95,8 +95,8 @@ original file has the exact checksum the patch was ported from.
 - `sdlc-publish-pr-v0.14.0/` (software-factory#43): `publish-pr` pushes the branch and
   opens/continues the pull request before it checks `pr-description.md`, escapes
   reserved description markers written outside Markdown code, and fails only after the
-  push when the description still cannot be written. Upstream fix: coleam00/Archon PR
-  (see the commit message). Remove the block and the directory once `ARCHON_VERSION`
+  push when the description still cannot be written. Upstream fix: coleam00/Archon#6142
+  — remove the block and the directory once `ARCHON_VERSION`
   points at a release that contains it.
 
 Verify a running container carries it (prints the patched function's line):

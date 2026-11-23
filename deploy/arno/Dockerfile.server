@@ -30,6 +30,7 @@ RUN apt-get update \
 # the BUILD if the base image's files are not the exact v0.14.0 bytes this was ported
 # from. When it trips: if the new upstream release has the fix, delete this block and
 # deploy/arno/patches/sdlc-publish-pr-v0.14.0/; otherwise re-port the patch.
+# Upstream fix: https://github.com/coleam00/Archon/pull/6142
 COPY deploy/arno/patches/sdlc-publish-pr-v0.14.0/ /tmp/sdlc-publish-pr/
 RUN set -eu; \
     pr=/app/.archon/workflows/sdlc/pr; \
