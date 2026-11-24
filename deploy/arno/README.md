@@ -88,27 +88,43 @@ data mutations remain approval-gated.
 ## Temporary pack patches
 
 `deploy/arno/patches/` holds byte-for-byte replacements for files in the upstream
-image's bundled workflow packs (`/app/.archon/workflows/`). Each one is applied by a
-guarded block in `Dockerfile.server` that refuses to build unless the base image's
-original file has the exact checksum the patch was ported from.
+image's bundled workflow packs (`/app/.archon/workflows/`). There are two ways to apply
+them, depending on how the host runs Archon:
+
+- **Image-only host (no source checkout), the current TrueNAS layout:** run the
+  patch's `fetch.sh` on the host and bind-mount the two files read-only over the
+  image's copies. `fetch.sh` refuses unless the running container still has the exact
+  original files the patch was ported from, and checks the downloaded files' checksums.
+- **Building from this repo:** the guarded block in `Dockerfile.server` copies them in
+  at build time and refuses to build on any other base.
 
 - `sdlc-publish-pr-v0.14.0/` (software-factory#43): `publish-pr` pushes the branch and
   opens/continues the pull request before it checks `pr-description.md`, escapes
   reserved description markers written outside Markdown code, and fails only after the
   push when the description still cannot be written. Upstream fix: coleam00/Archon#6142
-  — remove the block and the directory once `ARCHON_VERSION`
-  points at a release that contains it.
+  — remove it once the image is a release that contains it.
+
+Image-only host:
+
+```bash
+cd /mnt/HomeNAS/appdata/archon/deployment
+curl -fsSLO https://raw.githubusercontent.com/arno-ockerman/Archon/arno/truenas-publish-pr-stopgap/deploy/arno/patches/sdlc-publish-pr-v0.14.0/fetch.sh
+sh fetch.sh patches/sdlc-publish-pr-v0.14.0 <archon-container-name>
+# add the two printed volume lines to the archon service, then recreate it
+```
+
+**A bind mount does not notice an upgrade.** Remove the two volume lines *before*
+changing the image tag, or the 0.14.0 files will silently shadow the new release's.
 
 Verify a running container carries it (prints the patched function's line):
 
 ```bash
-docker compose -p archon -f deploy/arno/docker-compose.truenas.yml \
-  exec -T archon grep -n "function declaredSection" \
+docker exec <archon-container-name> grep -n "function declaredSection" \
   /app/.archon/workflows/sdlc/pr/scripts/publish-pr.ts
 ```
 
 Each new run freezes its own copy of the pack, so also check the first factory run
 after the rebuild: `workflow-source/runs/<runId>/bundled/workflows/sdlc/pr/scripts/publish-pr.ts`
 under that run's workspace must contain `declaredSection`. Runs started before the
-rebuild keep the old copy.
+recreate keep the old copy.
 
