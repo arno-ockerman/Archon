@@ -124,7 +124,7 @@ docker exec <archon-container-name> grep -n "function declaredSection" \
 ```
 
 Each new run freezes its own copy of the pack, so also check the first factory run
-after the rebuild: `workflow-source/runs/<runId>/bundled/workflows/sdlc/pr/scripts/publish-pr.ts`
+after the recreate: `workflow-source/runs/<runId>/bundled/workflows/sdlc/pr/scripts/publish-pr.ts`
 under that run's workspace must contain `declaredSection`. Runs started before the
 recreate keep the old copy.
 
